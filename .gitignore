@@ -1,0 +1,40 @@
+# Unity generated folders
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Mm]emoryCaptures/
+/[Rr]ecordings/
+/[Pp]rofilerCaptures/
+
+# Build output
+/[Bb]uild/
+/[Bb]uilds/
+/Assets/AssetBundles/
+/Assets/AssetBundles.meta
+
+# IDE generated files
+/.idea/
+/.vs/
+/.vscode/
+*.csproj
+*.sln
+*.suo
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+# Local tooling data
+/.agents/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+Desktop.ini

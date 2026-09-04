@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<BuildSetting
+  ProjectName="MyAssetBundleTest"
+  SuffixList=".unity;.prefab;.asset;.txt"
+  BuildRoot="Assets/AssetBundles">
+
+  <!-- 将 Assets/Scenes 目录中的所有 .unity 场景收进同一个 AssetBundle。 -->
+  <BuildItem
+    BundleType="Directory"
+    AssetPath="Assets/Scenes"
+    ResourceType="Direct"
+    Suffix=".bundle">
+    <ignorePaths />
+    <suffixes>
+      <string>.unity</string>
+    </suffixes>
+    <count>0</count>
+  </BuildItem>
+
+  <!-- Directory: Characters 目录中的 txt 文件合并为一个 AssetBundle。 -->
+  <BuildItem
+    BundleType="Directory"
+    AssetPath="Assets/AssetBundleTest/Characters"
+    ResourceType="Direct"
+    Suffix=".bundle">
+    <ignorePaths />
+    <suffixes>
+      <string>.txt</string>
+    </suffixes>
+    <count>0</count>
+  </BuildItem>
+
+  <!-- File: UI 目录中的每个 txt 文件分别生成一个 AssetBundle，并忽略 Ignored 目录。 -->
+  <BuildItem
+    BundleType="File"
+    AssetPath="Assets/AssetBundleTest/UI"
+    ResourceType="Direct"
+    Suffix=".bundle">
+    <ignorePaths>
+      <string>Assets/AssetBundleTest/UI/Ignored</string>
+    </ignorePaths>
+    <suffixes>
+      <string>.txt</string>
+    </suffixes>
+    <count>0</count>
+  </BuildItem>
+
+</BuildSetting>
