@@ -227,7 +227,7 @@ namespace MyAssetBundleFramework.PackageBuilder.Editor
                      assetBundleBuilds.ToArray(), 
                      BuildAssetBundleOptions.ChunkBasedCompression,
                      EditorUserBuildSettings.activeBuildTarget);
-
+            // 重新导入资源以确保Unity识别新生成的资源包
             AssetDatabase.Refresh();
             
             return manifest;
