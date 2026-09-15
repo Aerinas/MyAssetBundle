@@ -3,7 +3,6 @@ using UnityEngine;
 
 public sealed class AssetBundleLoadTest : MonoBehaviour
 {
-    private const string LoginBundleName = "assetbundletest_ui_login.bundle";
     private const string LoginAssetName = "Assets/AssetBundleTest/UI/Login.txt";
 
     private ResourceManager _resourceManager;
@@ -14,7 +13,6 @@ public sealed class AssetBundleLoadTest : MonoBehaviour
         _resourceManager.Initialize();
 
         TextAsset loginText = _resourceManager.LoadResource<TextAsset>(
-            LoginBundleName,
             LoginAssetName);
 
         if (loginText != null)
