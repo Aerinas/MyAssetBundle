@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using UnityEngine;
 using BundleLoadOperation = MyAssetBundleFramework.BundleManager.BundleLoadOperation;
@@ -30,6 +31,8 @@ namespace MyAssetBundleFramework.ResourceManager
         public bool IsDone => Done;
         public Exception Error { get; internal set; }
         public override bool keepWaiting => !Done;
+
+        public TaskAwaiter<UnityEngine.Object> GetAwaiter() => Completion.Task.GetAwaiter();
     }
 
     /// <summary>当前实现使用的资源状态记录；具体加载策略由 ResourceManager 推进。</summary>

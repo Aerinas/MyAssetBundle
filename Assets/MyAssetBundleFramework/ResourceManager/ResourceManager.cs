@@ -102,11 +102,8 @@ namespace MyAssetBundleFramework.ResourceManager
         {
             EnsureInitialized();
             string normalizedAssetName = NormalizeAddress(assetName);
-            return LoadResourceInternal<T>(
-                normalizedAssetName,
-                normalizedAssetName,
-                _editorMode ? null : ManifestIndex.Normalize(bundleName),
-                Array.Empty<string>());
+            ValidateBundleAddress(bundleName, normalizedAssetName);
+            return LoadResource<T>(normalizedAssetName);
         }
 
         public Task<T> LoadResourceAsync<T>(string address) where T : UnityEngine.Object
@@ -143,13 +140,40 @@ namespace MyAssetBundleFramework.ResourceManager
         {
             EnsureInitialized();
             string normalizedAssetName = NormalizeAddress(assetName);
-            ResourceEntry entry = LoadResourceEntryAsync(
-                normalizedAssetName,
-                normalizedAssetName,
-                _editorMode ? null : ManifestIndex.Normalize(bundleName),
-                typeof(T),
-                Array.Empty<string>());
-            return ConvertTask<T>(entry.Completion.Task);
+            ValidateBundleAddress(bundleName, normalizedAssetName);
+            return LoadResourceAsync<T>(normalizedAssetName);
+        }
+
+        private void ValidateBundleAddress(string bundleName, string address)
+        {
+            if (!_editorMode && !string.Equals(
+                    _bundleManager.GetResourceInfo(address).bundleName,
+                    ManifestIndex.Normalize(bundleName), StringComparison.OrdinalIgnoreCase))
+            {
+                throw new ArgumentException($"Resource '{address}' does not belong to '{bundleName}'.");
+            }
+        }
+
+        public void LoadWithCallback(string address, bool isAsync, Action<IResource> callback)
+        {
+            IResource resource = Load(address, isAsync);
+            void Complete()
+            {
+                try
+                {
+                    resource.GetAwaiter().GetResult();
+                }
+                catch (Exception)
+                {
+                }
+
+                callback?.Invoke(resource);
+            }
+
+            if (resource.IsDone)
+                Complete();
+            else
+                resource.GetAwaiter().OnCompleted(Complete);
         }
 
         /// <summary>
@@ -315,10 +339,20 @@ namespace MyAssetBundleFramework.ResourceManager
                 _bundleManager.Update();
             }
 
-            for (int index = _asyncResources.Count - 1; index >= 0; index--)
+            ResourceEntry[] pending = _asyncResources.ToArray();
+            for (int index = pending.Length - 1; index >= 0; index--)
             {
-                ResourceEntry entry = _asyncResources[index];
-                AdvanceAsyncResource(entry);
+                ResourceEntry entry = pending[index];
+                if (!_initialized || !_asyncResources.Contains(entry))
+                    continue;
+                try
+                {
+                    AdvanceAsyncResource(entry);
+                }
+                catch (Exception exception)
+                {
+                    FailEntry(entry, exception);
+                }
                 if (entry.Done)
                 {
                     _asyncResources.Remove(entry);
@@ -376,11 +410,14 @@ namespace MyAssetBundleFramework.ResourceManager
 
         public void UnloadAll(bool unloadAllLoadedObjects = false)
         {
-            foreach (ResourceEntry entry in _resources.Values)
+            ResourceEntry[] entries = new List<ResourceEntry>(_resources.Values).ToArray();
+            _initialized = false;
+            foreach (ResourceEntry entry in entries)
             {
                 if (!entry.Done)
                 {
-                    entry.Completion.TrySetCanceled();
+                    entry.Error = new OperationCanceledException("ResourceManager was unloaded.");
+                    entry.Done = true;
                 }
 
                 entry.Asset = null;
@@ -398,6 +435,8 @@ namespace MyAssetBundleFramework.ResourceManager
 
             _initialized = false;
             DetachDriver();
+            foreach (ResourceEntry entry in entries)
+                entry.Completion.TrySetCanceled();
         }
 
         private T LoadResourceInternal<T>(
@@ -581,6 +620,7 @@ namespace MyAssetBundleFramework.ResourceManager
                 _bundleManager.ReleaseBundle(entry.BundleName);
                 entry.BundleAcquired = false;
             }
+            ReleaseDependencies(entry);
         }
 
         private void AdvanceAsyncResource(ResourceEntry entry)
@@ -673,6 +713,7 @@ namespace MyAssetBundleFramework.ResourceManager
         private void CancelEntry(ResourceEntry entry)
         {
             entry.Done = true;
+            entry.Error = new OperationCanceledException($"Resource '{entry.Address}' was released while loading.");
             entry.AssetRequest = null;
             entry.Completion.TrySetCanceled();
         }

@@ -247,14 +247,37 @@ namespace MyAssetBundleFramework.Manifest
                 throw new ArgumentException("Path or address cannot be empty.");
             }
 
-            string normalized = path.Replace('\\', '/');
-            foreach (string segment in normalized.Split('/'))
+            // 常规 Manifest 路径已经使用正斜杠，此时直接复用原字符串，避免无效复制。
+            string normalized = path.IndexOf('\\') >= 0
+                ? path.Replace('\\', '/')
+                : path;
+
+            // 不使用 Split：逐字符验证路径段，避免为每次查询分配数组和子字符串。
+            int segmentStart = 0;
+            for (int index = 0; index <= normalized.Length; index++)
             {
-                if (segment.Length == 0 || segment == "." || segment == ".." ||
-                    segment.Contains(":"))
+                if (index < normalized.Length && normalized[index] != '/')
+                {
+                    if (normalized[index] == ':')
+                    {
+                        throw new InvalidDataException($"Invalid relative path: {path}");
+                    }
+
+                    continue;
+                }
+
+                int segmentLength = index - segmentStart;
+                bool currentDirectory = segmentLength == 1 &&
+                                        normalized[segmentStart] == '.';
+                bool parentDirectory = segmentLength == 2 &&
+                                       normalized[segmentStart] == '.' &&
+                                       normalized[segmentStart + 1] == '.';
+                if (segmentLength == 0 || currentDirectory || parentDirectory)
                 {
                     throw new InvalidDataException($"Invalid relative path: {path}");
                 }
+
+                segmentStart = index + 1;
             }
 
             return normalized;

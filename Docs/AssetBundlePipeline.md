@@ -80,4 +80,6 @@ Unity 菜单 `Build/Run Framework Tests` 运行断言测试。也支持 `-batchm
 | Hash | 写入用于版本比较，没有充当文件加密签名；CRC 为 0 时 Unity 跳过 CRC 校验 |
 | 多个管理器 | 同一套包应使用一个长期存活的管理器，多个独立实例不会共享缓存 |
 
-循环依赖未作为本次分包优化目标；visited 防止无限递归，但不保证环图的依赖优先顺序。资源查询不到、资源缺失或类型不匹配都会抛出异常。
+ManifestIndex 在初始化阶段检测资源与 Bundle 依赖环，发现环时拒绝加载。资源查询不到、资源缺失或类型不匹配都会抛出异常。
+
+完整运行时架构与生命周期图见 [ResourceArchitecture.md](ResourceArchitecture.md)。

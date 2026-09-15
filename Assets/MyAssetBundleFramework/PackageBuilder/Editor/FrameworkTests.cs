@@ -52,7 +52,17 @@ namespace MyAssetBundleFramework.PackageBuilder.Editor
             Check(string.Join(",", index.GetResourceLoadOrder("Assets/Main.prefab")) ==
                   "Assets/Common.mat,Assets/Main.prefab", "resource dependency first");
             Expect<KeyNotFoundException>(() => index.GetResource("missing"));
+            string canonicalPath = "Assets/Test/File.prefab";
+            Check(ReferenceEquals(canonicalPath, ManifestIndex.Normalize(canonicalPath)),
+                "canonical normalization reuses string");
+            Check(ManifestIndex.Normalize(@"Assets\Test\File.prefab") == canonicalPath,
+                "backslash normalization");
+            Expect<InvalidDataException>(() => ManifestIndex.Normalize("/Assets/Test.prefab"));
+            Expect<InvalidDataException>(() => ManifestIndex.Normalize("Assets/Test.prefab/"));
+            Expect<InvalidDataException>(() => ManifestIndex.Normalize("Assets//Test.prefab"));
+            Expect<InvalidDataException>(() => ManifestIndex.Normalize("Assets/./Test.prefab"));
             Expect<InvalidDataException>(() => ManifestIndex.Normalize("../escape"));
+            Expect<InvalidDataException>(() => ManifestIndex.Normalize("C:/escape"));
             RuntimeManifest manifest = CreateManifest();
             manifest.resources.Add(manifest.resources[0]);
             Expect<InvalidDataException>(() => new ManifestIndex(manifest));
@@ -124,12 +134,24 @@ namespace MyAssetBundleFramework.PackageBuilder.Editor
                 Check(editorTask.IsCompleted && editorTask.Result != null, "editor awaitable loading");
                 IResource editorHandle = manager.Load(firstPath, false);
                 Check(editorHandle.Asset != null && editorHandle.IsDone, "observable resource handle");
+                Check(editorHandle.GetAwaiter().IsCompleted &&
+                      editorHandle.GetAwaiter().GetResult() == editorHandle.Asset,
+                    "resource handle directly awaitable");
                 Check(manager.GetResourceReferenceCount(firstPath) == 3, "editor resource cache reuse");
                 manager.Unload(editorHandle);
                 manager.ReleaseResource(firstPath);
                 manager.ReleaseResource(firstPath);
                 manager.LateUpdate();
                 Check(manager.LoadedResourceCount == 0, "editor delayed resource unload");
+                bool handleCallbackInvoked = false;
+                manager.LoadWithCallback(firstPath, true, handle =>
+                {
+                    handleCallbackInvoked = handle.IsDone && handle.Error == null;
+                    manager.Unload(handle);
+                });
+                Check(handleCallbackInvoked, "handle callback can release its reference");
+                manager.LateUpdate();
+                Check(manager.LoadedResourceCount == 0, "callback release drains cache");
                 manager.UnloadAll();
                 List<AssetBundleBuild> builds = new()
                 {
@@ -154,6 +176,13 @@ namespace MyAssetBundleFramework.PackageBuilder.Editor
                 Check(new ManifestIndex(catalog).GetResourceLoadOrder(firstPath).Count == 3,
                     "built resource dependency graph");
                 manager.Initialize(output);
+                Expect<ArgumentException>(() => manager.LoadResource<GameObject>("second.bundle", firstPath));
+                GameObject legacy = manager.LoadResource<GameObject>("first.bundle", firstPath);
+                Check(legacy.GetComponent<MeshRenderer>().sharedMaterial != null &&
+                      manager.GetResourceReferenceCount(materialPath) == 1,
+                    "explicit bundle overload acquires resource dependencies");
+                manager.ReleaseResource(firstPath);
+                DrainLateUpdates(manager);
                 GameObject first = manager.LoadResource<GameObject>(firstPath);
                 Check(first != null && manager.LoadedBundleCount == 2, "resource and dependency loading");
                 Check(manager.LoadResource<GameObject>(firstPath) == first && manager.LoadedBundleCount == 2, "cache reuse");

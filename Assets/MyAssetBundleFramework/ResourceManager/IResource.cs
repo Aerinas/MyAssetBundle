@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.CompilerServices;
 using UnityEngine;
 
 namespace MyAssetBundleFramework.ResourceManager
@@ -15,5 +16,6 @@ namespace MyAssetBundleFramework.ResourceManager
         int ReferenceCount { get; }
         bool IsDone { get; }
         Exception Error { get; }
+        TaskAwaiter<UnityEngine.Object> GetAwaiter();
     }
 }
